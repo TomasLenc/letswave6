@@ -1,4 +1,4 @@
-function [out_header,out_data,message_string]=RLW_import_BDF(filename);
+function [out_header,out_data,message_string]=RLW_import_BDF(filename, varargin)
 %RLW_import_BDF
 %
 %Import BDF data
@@ -15,18 +15,42 @@ function [out_header,out_data,message_string]=RLW_import_BDF(filename);
 % See http://nocions.webnode.com/letswave for additional information
 %
 
+parser = inputParser;
+
+addParameter(parser, 'chan_labels', {});
+
+parse(parser, varargin{:});
+
+chan_labels = parser.Results.chan_labels;
+
+
 message_string={};
 out_header=[];
 out_data=[];
 
 message_string{1}=['Loading : ' filename];
 
-%load the BDF file
-%load data
-dat=ft_read_data(filename);
-
 %load header
 hdr=ft_read_header(filename);
+
+% find requested channels 
+if isempty(chan_labels)
+    chan_idx = [1 : length(hdr.label)]; 
+else
+    chan_idx = find(ismember(hdr.label, chan_labels)); 
+    if length(chan_idx) ~= length(chan_labels)
+        error('could not find all requested channel names in the BDF header...'); 
+    end
+end
+% update header 
+hdr.nChans = length(chan_idx); 
+hdr.label = hdr.label(chan_idx); 
+hdr.chantype = hdr.chantype(chan_idx); 
+hdr.chanunit = hdr.chanunit(chan_idx); 
+
+%load the BDF file
+%load data
+dat=ft_read_data(filename, 'chanindx', chan_idx);
 
 %load events
 trg=ft_read_event(filename);
